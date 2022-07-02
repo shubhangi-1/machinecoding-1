@@ -1,0 +1,508 @@
+iven 4 List Api date wise
+1.) Security
+A.) Api 1 : get all current holdings (https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/api/holding)
+B.) Api 2: get in list of 200 size with next page api link (https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/paging/holding_start)
+
+2.) Price List
+A.) Api 1 : get all prices holdings (https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/api/pricing)
+B.) Api 2: get prices in 200 size list with next page api link (https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/paging/pricing_start)
+
+import java.io.*;
+import java.math.*;
+import java.security.*;
+import java.text.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.regex.*;
+import java.util.stream.*;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+​
+​
+​
+import java.net.URL;
+import java.net.HttpURLConnection;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+​
+class Result {
+​
+    /*
+     * Complete the 'calculateNAV' function below.
+     *
+     * The function is expected to return a DOUBLE.
+     * The function accepts STRING date as parameter.
+     */
+     
+     public static Map<String , Map<String, HoldingData>> m;
+​
+    public static double calculateNAV(String date) {
+          Double navValue = 0.0;
+          if(m == null || m.isEmpty()){
+             m = new HashMap<>();
+            
+         String holdingAllApi = "https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/api/holding";
+       String holdingResponse  = getApiData(holdingAllApi);
+          mapHoldingToResponse(holdingResponse);
+          
+          String allPriceAPi = "https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/api/pricing";
+          String priceResponse  = getApiData(allPriceAPi);
+          mapPriceToResponse(priceResponse);
+          }
+          
+          String dateKey = date.replaceAll("[\\s\\-()]", "");
+          
+          if(m.containsKey(dateKey)){
+             Map<String , HoldingData> map = m.get(dateKey);
+              for(Map.Entry<String , HoldingData> e : map.entrySet()){
+                navValue += e.getValue().getQuantity()*e.getValue().getPrice();          
+              }    
+          }
+           
+          
+return navValue;
+    }
+    
+    public static void mapPriceToResponse(String priceResponse){
+        try{
+        Gson gson = new GsonBuilder().create();
+        PriceData[] r = gson.fromJson(priceResponse , PriceData[].class);
+        
+        for (PriceData priceData : r) {
+            if(m.containsKey(priceData.getDate()) && m.get(priceData.getDate()).containsKey(priceData.getSecurity() )){
+           //     System.out.println(priceData.getDate());
+               m.get(priceData.getDate()).get(priceData.getSecurity()).setPrice(priceData.getPrice()); 
+           
+            }   
+        }
+        
+        
+        /*
+        for(Map.Entry<String , Map<String ,HoldingData>> entry : m.entrySet()){
+            System.out.println("XXX");
+            System.out.println(entry.getKey()) ; 
+            
+            for(Map.Entry<String , HoldingData> e : entry.getValue().entrySet()){
+            
+            System.out.println(e.getKey() + "--value-" + e.getValue().getPrice());
+            
+        }
+        System.out.println("YYY");
+        }
+        */
+        
+        }catch(Exception ex){
+            System.out.println("error in price gson parding =["+ex+"]");
+        }
+    }
+    
+    public static void mapHoldingToResponse(String holdingResponse){
+        try{
+        Gson gson = new GsonBuilder().create();
+        HoldingData[] r = gson.fromJson(holdingResponse , HoldingData[].class);
+        
+        for (HoldingData holdingData : r) {
+            if(m.containsKey(holdingData.getDate())){
+               m.get(holdingData.getDate()).put(holdingData.getSecurity() ,holdingData); 
+               
+            }else{
+                Map<String , HoldingData> map = new HashMap<>();
+                map.put(holdingData.getSecurity(), holdingData);
+                m.put(holdingData.getDate(), map);
+                
+            }   
+        }
+        
+        }catch(Exception ex){
+           System.out.println("error in holding gson parding =["+ex+"]");
+        }
+    }
+    
+    public static String getApiData(String urll){
+        try{
+        URL url = new URL(urll);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.connect();
+        
+        int responseCode = conn.getResponseCode();
+      //  System.out.println("response code ="+responseCode);
+        
+        String inline ="";
+        Scanner scanner = new Scanner(url.openStream());
+        
+        while(scanner.hasNext()){
+            inline+= scanner.nextLine();
+        }
+        
+        scanner.close();
+        
+        return inline;
+        
+        }catch(Exception e){
+            System.out.println("exception code ="+e);
+        }
+        return "";
+    }
+    
+    public class PriceData{
+         
+        private String date;
+        private String security;
+        private Double price;
+        
+        
+        @Override
+        public String toString(){
+            return this.date;
+        }
+        
+        
+        public String getDate(){
+            return date;
+        } 
+        
+        public String getSecurity(){
+            return security;
+        }
+        
+         public void setDate(String data){
+            this.date = data;
+        } 
+        
+         public void setSecurity(String security){
+            this.security = security;
+        } 
+        
+        
+        public Double getPrice(){
+            return price;
+        }
+        
+         public void setPrice(Double price){
+            this.price = price;
+        }  
+    }
+    
+    
+    public class HoldingData{
+        
+        private String date;
+        private String security;
+        private Integer quantity;
+        private Double price;
+        private String portfolio;
+        
+        @Override
+        public String toString(){
+            return this.date;
+        }
+        
+        
+        public String getDate(){
+            return date;
+        } 
+        
+        public String getSecurity(){
+            return security;
+        }
+        public Integer getQuantity(){
+            return quantity;
+        }
+        public String getPortfolio(){
+            return portfolio;
+        }
+        
+         public void setDate(String data){
+            this.date = data;
+        } 
+        
+         public void setSecurity(String security){
+            this.security = security;
+        } 
+        
+         public void setQuantity(Integer quantity){
+            this.quantity = quantity;
+        } 
+        
+         public void getPortfolio(String portfolio){
+            this.portfolio = portfolio;
+        } 
+        
+        
+        public Double getPrice(){
+            return price;
+        }
+        
+         public void setPrice(Double price){
+            this.price = price;
+        } 
+        
+        
+    }
+​
+}
+facebookShare on Facebook
+TwitterTweet
+FollowFollow us
+← Microservice ArchitectureComplete Apache Kafka Guide & It’s Architecture : →
+0
+Article Rating
+ Subscribe 
+Connect with
+ Login
+guest
+
+
+{}[+]
+5 COMMENTS
+Oldest 
+Anony
+Anony
+ 10 months ago
+Good solution!
+In response of given holdings url , i can see there can be multiple holdings with same security name and different portfolio. In that case should you not be summing up quantities while mapping holdings if an entry exists for given data and given security?
+
+0
+ Reply
+zunglee
+zunglee
+Author
+Reply to 
+Anony
+ 10 months ago
+Portfolio is different for same security . But in question all holdings was counted as one total for any security , dats y map would work.
+Out of 10 test cases . One test case 8th one was returning wrong answer. Dat I wasn’t able to crack dat time.
+
+0
+ Reply
+LKM
+LKM
+Reply to 
+zunglee
+ 8 months ago
+Did you get the next round invitation from arcesium ?
+
+0
+ Reply
+zunglee
+zunglee
+Author
+Reply to 
+LKM
+ 8 months ago
+Nope, I didn’t get called for the next round. One of my friends, who did this using multi-threading got the next round call.
+FYI, his all test cases were passed.
+
+0
+ Reply
+Ankur Mittal
+Ankur Mittal
+ 4 months ago
+import java.io.*;
+import java.math.*;
+import java.security.*;
+import java.text.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.regex.*;
+import java.util.stream.*;
+
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
+import java.net.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+class Result {
+
+/*
+* Complete the ‘calculateNAV’ function below.
+*
+* The function is expected to return a DOUBLE.
+* The function accepts STRING date as parameter.
+*/
+
+public static double calculateNAV(String date) {
+Map map = new HashMap();
+try{
+String holdingUrl = “https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/paging/holding_start”;
+populateHolding(date, holdingUrl, map);
+
+String priceUrl = “https://raw.githubusercontent.com/arcjsonapi/HoldingValueCalculator/master/paging/pricing_start”;
+populatePrice(date, priceUrl , map);
+
+for(AssetHolding assetHolding : map.values()){
+System.out.println(assetHolding);
+}
+
+double result = 0;
+for(AssetHolding assetHolding : map.values()){
+result = result + assetHolding.price*assetHolding.quantity;
+}
+result = result *100;
+result = Math.floor(result);
+result = result /100;
+return result;
+
+} catch(Exception e){
+System.out.println(“Exception Encountered ” + e);
+return -1;
+}
+}
+
+public static void populatePrice(String date, String url, Map map) throws ParseException{
+
+String apiUrl = url;
+while(apiUrl!=null){
+String responseObject = callApi(apiUrl);
+Gson gson = new GsonBuilder().create();
+ApiResponse apiResponse = gson.fromJson(responseObject,ApiResponse.class);
+
+apiUrl = apiResponse.nextPage;
+
+List marketPrices = apiResponse.data;
+
+Date start = new SimpleDateFormat(“yyyyMMdd”).parse(marketPrices.get(0).date);
+Date end = new SimpleDateFormat(“yyyyMMdd”).parse(marketPrices.get(marketPrices.size()-1).date);
+
+Date currentDate = new SimpleDateFormat(“yyyyMMdd”).parse(date);
+
+if(end.compareTo(currentDate) < 0){
+apiUrl = apiResponse.nextPage;
+continue;
+}
+if(start.compareTo(currentDate)<=0){
+if(currentDate.compareTo(end) < 0){
+apiUrl = null;
+for(AssetHolding marketPrice: marketPrices){
+if(marketPrice.date.equals(date)){
+AssetHolding assetHolding = map.getOrDefault(marketPrice.security, null);
+if(assetHolding !=null){
+assetHolding.price = marketPrice.price;
+map.put(marketPrice.security, assetHolding);
+}
+}
+}
+}
+if(currentDate.compareTo(end) == 0){
+apiUrl = apiResponse.nextPage;
+continue;
+}
+
+}
+}
+
+}
+
+public static void populateHolding(String date, String url, Map map) throws ParseException{
+String apiUrl = url;
+while(apiUrl!=null){
+String responseObject = callApi(apiUrl);
+Gson gson = new GsonBuilder().create();
+ApiResponse apiResponse = gson.fromJson(responseObject,ApiResponse.class);
+
+apiUrl = apiResponse.nextPage;
+List assetHoldings = apiResponse.data;
+
+Date startDate = new SimpleDateFormat(“yyyyMMdd”).parse(assetHoldings.get(0).date);
+Date endDate = new SimpleDateFormat(“yyyyMMdd”).parse(assetHoldings.get(assetHoldings.size()-1).date);
+
+Date currentDate = new SimpleDateFormat(“yyyyMMdd”).parse(date);
+
+if(endDate.compareTo(currentDate) < 0){
+apiUrl = apiResponse.nextPage;
+continue;
+}
+if(startDate.compareTo(currentDate)<=0){
+if(currentDate.compareTo(endDate) < 0){
+apiUrl = null;
+for(AssetHolding singleAsset: assetHoldings){
+if(singleAsset.date.equals(date)){
+AssetHolding assetHolding = map.getOrDefault(singleAsset.security, new AssetHolding());
+assetHolding.date = singleAsset.date;
+assetHolding.security = singleAsset.security;
+assetHolding.quantity += singleAsset.quantity;
+// assetHolding.portfolio = marketPrice.portfolio;
+map.put(singleAsset.security, assetHolding);
+}
+}
+}
+if(currentDate.compareTo(endDate) == 0){
+apiUrl = apiResponse.nextPage;
+continue;
+}
+}
+}
+}
+
+public static String callApi(String baseUrl){
+try{
+URL url = new URL(baseUrl);
+HttpURLConnection con = (HttpURLConnection)url.openConnection();
+con.setRequestMethod("GET");
+con.addRequestProperty("Content-Type", "application/json");
+con.addRequestProperty("Accept", "application/json");
+con.connect();
+
+BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+String decodedString;
+StringBuilder sb = new StringBuilder();
+while((decodedString = bufferedReader.readLine()) !=null){
+// System.out.println(decodedString);
+sb.append(decodedString);
+}
+return sb.toString();
+} catch (Exception e){
+return "";
+}
+}
+
+}
+
+class ApiResponse{
+int totalRecords;
+int recordsPerPage;
+int page;
+String nextPage;
+List data;
+}
+
+class AssetHolding{
+String date;
+String security;
+double price;
+int quantity;
+String portfolio;
+
+@Override
+public String toString(){
+return “Date: “+date+”,”+”security: “+security+”,”+”price: “+price+”,”+”quantity: “+quantity+”,”+”portfolio: “+portfolio;
+}
+}
+
+public class Solution {
+public static void main(String[] args) throws IOException {
+BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(System.getenv(“OUTPUT_PATH”)));
+
+String date = bufferedReader.readLine();
+
+double result = Result.calculateNAV(date);
+
+bufferedWriter.write(String.valueOf(result));
+bufferedWriter.newLine();
+
+bufferedReader.close();
+bufferedWriter.close();
+}
+}
+
+1
+ Reply
+Side Bar
+Post Tags
+algorithm (2) apache kafka (2) api (1) api definition (1) c++ (2) c++ code (8) c++ STL (6) calculator (9) cheat list (1) coding (8) cpp (1) datastructure (1) data structure (6) external hard drive (1) fraud (1) fraud-binarytrading (1) free (1) g++ (1) gcc (1) grep (1) hack (1) hard drive (1) how to (4) http https (1) IDE (1) instagram (1) interview questions (14) jetbrains (1) leeetcode (1) leetcode (2) linux (4) linux-command (1) linux terminal (2) php (2) phpstorm (1) programming (1) REST (1) REST api (1) ssl certificate (1) ssl certificate renewal (1) string (1) system design (3) tech wiki (2) tree data structure (1) WD hard drive (1)
